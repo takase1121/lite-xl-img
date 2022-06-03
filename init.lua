@@ -6,6 +6,8 @@ local command = require "core.command"
 local style = require "core.style"
 local View = require "core.view"
 
+local qoi = require "plugins.img.qoi"
+
 local subprocess = require "process"
 
 config.plugins.img = {
@@ -15,41 +17,6 @@ config.plugins.img = {
 
 local conf = config.plugins.img
 
-local function open_img(filename)
-    local proc = subprocess.start { conf.bin_path, filename }
-    
-    local buf = {}
-    local size = 0
-    while true do
-        local data = proc:read_stdout()
-        if not data then
-            break
-        end
-
-        size = size + #buf
-        if size % 10000 == 0 then
-            core.redraw = true
-            coroutine.yield(0, size)
-        end
-        buf[#buf+1] = data
-    end
-
-    if proc:returncode() == 0 then
-        buf = table.concat(buf)
-        local w, h, c, start = buf:match("^img;(%d+);(%d+);(%d+);()")
-        return true, w, h, c, buf:sub(start)
-    else
-        buf = {}
-        while true do
-            local data = proc:read_stderr()
-            if not data then
-                break
-            end
-            buf[#buf+1] = data
-        end
-        return false, table.concat(buf)
-    end
-end
 
 local function trampoline(f, cb, ...)
     local c = coroutine.create(f)
@@ -75,7 +42,6 @@ function ImgView:new()
     ImgView.super.new(self)
 
     self.error = "Not loaded"
-    self.img = { x = 0, y = 0, c = 0 }
     self.last = 1
 
     self.rect = { x = 0, y = 0, w = 0, h = 0 }
@@ -83,26 +49,28 @@ function ImgView:new()
 end
 
 function ImgView:load(filename)
-    core.add_thread(function()
-        local ok, w, h, c, buf = trampoline(open_img, function(current)
-            self.error = string.format("Loading... (%s) bytes", current)
-        end, filename)
-        
-        if ok then
-            self.error = nil
-            self.img.x, self.img.y, self.img.c = w, h, c
-            self.img.buf = buf
-            self.img.size = w * h
-        else
-            self.error = w
-        end
-    end, self)
+    local f, err = io.open(filename, "rb")
+    if not f then
+        error(err)
+    end
+
+    local buf = f:read("*a")
+    local data, channels, colorspace = qoi.decode(buf)
+
+    if not data then
+        self.error = channels
+    else
+        -- sadly we don't do srgb here
+        -- so srgb isnt used
+        self.error = nil
+        self.img = data
+        self.img.c = channels
+    end
 end
 
 function ImgView:unload()
     self.error = "Not loaded"
-    self.img.x, self.img.y, self.img.c = 0, 0, 0
-    self.img.buf = nil
+    self.img = {}
 end
 
 local function overlap(a, b)
@@ -175,22 +143,29 @@ function ImgView:draw()
         common.draw_text(style.big_font, style.text, self.error, "center", ox, oy, self.size.x, self.size.y)
     else
         if self.last == 1 then
+            -- resetted, redrawing background
             self:draw_background(style.background)
         end
 
-        local max_screen = self.img.x * self.size.y
-        local max_pixels = math.min(conf.max_pixels, self.img.size, self.img.size - self.last, max_screen - self.last)
+        local max_viewport = self.img.w * self.img.h
+        local max_img = self.img.w * self.img.h
+        local max_pixels = math.min(conf.max_pixels, max_img, max_img - self.last, max_viewport - self.last)
         if max_pixels > 0 then
+            -- make sure pixels are continually drawn and not paused
             core.redraw = true
         else
             return
         end
 
         local next_i = self.last + max_pixels
+        -- when you use a 1 based index everything is wack
         for i = self.last, next_i do
-            local x, y = ox + (i-1) % self.img.x, oy + math.floor((i-1) / self.img.x)
-            local stride_i = i * 4
-            color[1], color[2], color[3], color[4] = self.img.buf:byte(stride_i - 3, stride_i)
+            local x, y = ox + (i-1) % self.img.w, oy + (i-1) // self.img.w
+            local c = self.img[i]
+            color[1] = (c >> 24) & 0xFF
+            color[2] = (c >> 16) & 0xFF
+            color[3] = (c >> 8)  & 0xFF
+            color[4] =  c        & 0xFF
             renderer.draw_rect(x, y, 1, 1, color, self)
         end
         self.last = next_i
@@ -200,7 +175,7 @@ end
 command.add(ImgView, {
     ["img:load"] = function()
         local v = core.active_view
-        v:load("test2.png")
+        v:load("test.qoi")
     end
 })
 
