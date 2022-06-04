@@ -115,7 +115,7 @@ end
 function ImgView:update()
     ImgView.super.update(self)
 
-    if self.occluded_by == 1 then
+    if self.img and self.occluded_by == 1 then
         self.current = qoi.copy(self.img)
     end
 
