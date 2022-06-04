@@ -42,7 +42,6 @@ function ImgView:new()
     ImgView.super.new(self)
 
     self.error = "Not loaded"
-    self.last = 1
 
     self.rect = { x = 0, y = 0, w = 0, h = 0 }
     self.occluded_by = 1
@@ -51,26 +50,21 @@ end
 function ImgView:load(filename)
     local f, err = io.open(filename, "rb")
     if not f then
-        error(err)
+        self.error = err
     end
 
     local buf = f:read("*a")
-    local data, channels, colorspace = qoi.decode(buf)
+    f:close()
 
-    if not data then
-        self.error = channels
-    else
-        -- sadly we don't do srgb here
-        -- so srgb isnt used
-        self.error = nil
-        self.img = data
-        self.img.c = channels
-    end
+    local ok, err, decoder = pcall(qoi.decode, buf)
+    if not ok then self.error = err else self.error = nil end
+    self.img = decoder
 end
 
 function ImgView:unload()
     self.error = "Not loaded"
-    self.img = {}
+    self.img = nil
+    self.current = nil
 end
 
 local function overlap(a, b)
@@ -122,7 +116,7 @@ function ImgView:update()
     ImgView.super.update(self)
 
     if self.occluded_by == 1 then
-        self.last = 1
+        self.current = qoi.copy(self.img)
     end
 
     self.rect.x, self.rect.y = self:get_content_offset()
@@ -140,16 +134,17 @@ function ImgView:draw()
     
     if self.error then
         self:draw_background(style.background)
-        common.draw_text(style.big_font, style.text, self.error, "center", ox, oy, self.size.x, self.size.y)
+        common.draw_text(style.font, style.text, self.error, "center", ox, oy, self.size.x, self.size.y)
     else
-        if self.last == 1 then
+        local current_i = self.current.pixel
+        if current_i == 0 then
             -- resetted, redrawing background
             self:draw_background(style.background)
         end
 
-        local max_viewport = self.img.w * self.img.h
-        local max_img = self.img.w * self.img.h
-        local max_pixels = math.min(conf.max_pixels, max_img, max_img - self.last, max_viewport - self.last)
+        local max_viewport = self.size.x * self.size.y
+        local max_img = self.img.size
+        local max_pixels = math.min(conf.max_pixels, max_img, max_img - current_i, max_viewport - current_i)
         if max_pixels > 0 then
             -- make sure pixels are continually drawn and not paused
             core.redraw = true
@@ -157,18 +152,15 @@ function ImgView:draw()
             return
         end
 
-        local next_i = self.last + max_pixels
-        -- when you use a 1 based index everything is wack
-        for i = self.last, next_i do
+        local next_i = current_i + max_pixels
+        for i = current_i, next_i do
+            local decoder, r, g, b, a = qoi.decode_iterator(self.current)
+            if not decoder then break end
+
             local x, y = ox + (i-1) % self.img.w, oy + (i-1) // self.img.w
-            local c = self.img[i]
-            color[1] = (c >> 24) & 0xFF
-            color[2] = (c >> 16) & 0xFF
-            color[3] = (c >> 8)  & 0xFF
-            color[4] =  c        & 0xFF
+            color[1], color[2], color[3], color[4] = r, g, b, a
             renderer.draw_rect(x, y, 1, 1, color, self)
         end
-        self.last = next_i
     end
 end
 
