@@ -112,6 +112,12 @@ function ImgView:unhook()
     renderer.set_clip_rect = self.original_clip
 end
 
+function ImgView:try_close(do_close)
+    self:unload()
+    self:unhook()
+    ImgView.super.try_close(self, do_close)
+end
+
 function ImgView:update()
     ImgView.super.update(self)
 
