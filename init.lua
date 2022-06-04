@@ -173,7 +173,9 @@ end
 command.add(ImgView, {
     ["img:load"] = function()
         local v = core.active_view
-        v:load("test.qoi")
+        core.command_view:enter("QOI file", function(text)
+            v:load(text)
+        end, common.path_suggest)
     end
 })
 
