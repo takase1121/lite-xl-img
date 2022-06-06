@@ -73,13 +73,15 @@ function qoi.decode_iterator(self)
 			return error "Missing data end marker."
 		end
 		pos = pos + 8
-
+    
 		if pos <= #s then
 			return error "Junk after data."
 		end
-
+    
 		return nil
 	end
+
+  self.pixel = self.pixel + 1
 
 	if self.run > 0 then
 		self.run = self.run - 1
@@ -157,8 +159,6 @@ function qoi.decode_iterator(self)
 	self.g = g
 	self.b = b
 	self.a = a
-
-	self.pixel = self.pixel + 1
 
 	return self, r, g, b, a
 end
