@@ -1,5 +1,8 @@
 #include <stdio.h>
 
+#define QOI_IMPLEMENTATION
+#include "./qoi.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "./stb_image.h"
 
@@ -15,8 +18,20 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    printf("img;%d;%d;%d;", w, h, 4);
-    fwrite(img, sizeof(unsigned char), w * h * 4, stdout);
+    int output_size = 0;
+    qoi_desc desc = { 
+        .width = w,
+        .height = h,
+        .channels = 4,
+        .colorspace = QOI_LINEAR
+    };
+    unsigned char *output = qoi_encode(img, &desc, &output_size);
+    if (output == NULL) {
+        fprintf(stderr, "error: cannot convert image to qoi\n");
+        return 1;
+    }
+
+    fwrite(output, sizeof(unsigned char), output_size, stdout);
 
     return 0;
 }
