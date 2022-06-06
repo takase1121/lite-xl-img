@@ -47,6 +47,7 @@
 local qoi = {
 	_VERSION = "1.1.0",
 }
+qoi.__index = qoi
 
 function qoi.decode_iterator(self)
 	local getByte = string.byte
@@ -163,36 +164,73 @@ function qoi.decode_iterator(self)
 end
 
 
-function qoi.copy(state)
-	local s = {}
+function qoi:pixels()
+	return self.decode_iterator, self
+end
 
-	s.s = state.s
-	s.pos = state.pos
-	s.channels = state.channels
-	s.colorSpace = state.colorSpace
-	s.w = state.w
-	s.h = state.h
-	s.size = state.size
-	
-	s.pixel = state.pixel
 
-	s.prevR = state.prevR
-	s.prevG = state.prevG
-	s.prevB = state.prevB
+function qoi:collect_pixels()
+	local result = {}
+	local i = 1
+	for _, r, g, b, a in self:copy():pixels() do
+		result[i], result[i+1], result[i+2], result[i+3] = r, g, b, a
+		i = i + 4
+	end
+	return result
+end
 
-	s.r = state.r
-	s.g = state.g
-	s.b = state.b
-	s.a = state.a
 
-	s.run = state.run
+function qoi:copy()
+	local new_state = {}
 
-	s.seen = {}
-	for i = 1, #state.seen do
-		s.seen[i] = state.seen[i]
+	new_state.s = self.s
+	new_state.pos = self.pos
+	new_state.channels = self.channels
+	new_state.colorSpace = self.colorSpace
+	new_state.w = self.w
+	new_state.h = self.h
+	new_state.size = self.size
+
+	new_state.pixel = self.pixel
+
+	new_state.prevR = self.prevR
+	new_state.prevG = self.prevG
+	new_state.prevB = self.prevB
+
+	new_state.r = self.r
+	new_state.g = self.g
+	new_state.b = self.b
+	new_state.a = self.a
+
+	new_state.run = self.run
+
+	new_state.seen = {}
+	for i = 1, #self.seen do
+		new_state.seen[i] = self.seen[i]
 	end
 
-	return s
+	return new_state
+end
+
+
+function qoi:reset()
+	self.pos = 15 -- the header is 14 bytes
+	self.pixel = 0
+
+	for i = 1, #self.seen do
+		self.seen[i] = 0
+	end
+
+	self.prevR = 0
+	self.prevG = 0
+	self.prevB = 0
+
+	self.r = 0
+	self.g = 0
+	self.b = 0
+	self.a = 255
+
+	self.run = 0
 end
 
 
@@ -231,26 +269,25 @@ function qoi.decode(s)
 	end
 	pos = pos + 1
 
-	local colorSpace = getByte(s, pos)
-	if colorSpace > 1 then
+	local colorspace = getByte(s, pos)
+	if colorspace > 1 then
 		return error "Invalid color space value."
 	end
-	colorSpace = (colorSpace == 0 and "srgb" or "linear")
+	colorspace = (colorspace == 0 and "srgb" or "linear")
 	pos        = pos + 1
 
 
-	local state = {}
+	local state = setmetatable({}, qoi)
 
 	state.s = s
 	state.pos = pos
 	state.channels = channels
-	state.colorSpace = colorSpace
+	state.colorspace = colorspace
 	state.w = w
 	state.h = h
 	state.size = w * h
 
-	state.pixel = 0
-
+	-- reset doesn't create a new array, so we need to create them first
 	state.seen = {
 		-- 64 RGBA pixels.
 		0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
@@ -259,18 +296,9 @@ function qoi.decode(s)
 		0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
 	}
 
-	state.prevR = 0 -- Note: All these color values are treated as signed bytes.
-	state.prevG = 0
-	state.prevB = 0
+	state:reset()
 
-	state.r = 0
-	state.g = 0
-	state.b = 0
-	state.a = 255
-
-	state.run = 0
-
-	return qoi.decode_iterator, state
+	return state
 end
 
 return qoi
