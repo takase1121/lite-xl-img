@@ -4,47 +4,53 @@ on:
   push
 
 jobs:
-  build:
+  build_linux:
     runs-on: ubuntu-18.04
 
     steps:
       - uses: actions/checkout@v3
 
       - name: Compile
-        run: gcc -o img.com img.c -lm
+        run: gcc -o img img.c -lm
 
       - name: Package (Linux)
         uses: actions/upload-artifact@v3
         with:
-          name: Linux bundle
-          path: |
-            img.com
-            init.lua
-            qoi.lua
-            LICENSE
+          name: Bundle
+          path:
+            img
+  
+
+  build_mac:
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Compile
+        run: clang -o img.cursed img.c -lm
+
+      - name: Package (Mac)
+        uses: actions/upload-artifact@v3
+        with:
+          name: Bundle
+          path:
+            img.cursed
 
 
-  build_ape:
-    runs-on: ubuntu-latest
+  build_win:
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v3
+      
+      - name: Compile
+        run: clang -o img img.c -lm
 
-      - name: Download and compile
-        run: |
-          wget "https://justine.lol/cosmopolitan/cosmopolitan.zip"
-          unzip cosmopolitan.zip
-          gcc -g -Os -static -fno-pie -no-pie -nostdlib -nostdinc \
-            -fno-omit-frame-pointer -pg -mnop-mcount \
-            -o img.com.dbg img.c -Wl,--gc-sections -fuse-ld=bfd \
-            -Wl,-T,ape.lds -include cosmopolitan.h crt.o ape.o cosmopolitan.a
-          objcopy -S -O binary img.com.dbg img.com
-      - name: Package APE
+      - name: Package (Windows)
         uses: actions/upload-artifact@v3
         with:
-          name: Universal bundle
-          path: |
-            img.com
-            init.lua
-            qoi.lua
-            LICENSE
+          name: Bundle
+          path:
+            img.exe
+  
