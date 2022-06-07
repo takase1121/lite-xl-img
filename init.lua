@@ -162,7 +162,7 @@ function ImgView:update()
 
     if ox ~= self.rect.x or oy ~= self.rect.y
       or self.size.x ~= self.rect.w or self.size.y ~= self.rect.h then
-      self.img:reset()
+        self.img:reset()
     end
   end
 
