@@ -208,9 +208,11 @@ function ImgView:draw()
       self:draw_background(style.background)
     end
 
-    local max_viewport = self.size.x * self.size.y
+    -- note that pixels that are clipped from the viewport needs to be accounted for
+    -- thats why the width is the image width not the viewport width
+    local max_viewport = self.img.w * self.size.y
     local max_img = self.img.size
-    local max_pixels = math.min(C.max_pixels, max_img, max_img - current_i, max_viewport - current_i)
+    local max_pixels = math.min(C.max_pixels, max_img - current_i, max_viewport - current_i)
     if max_pixels <= 0 then
       -- finished drawing, do nothing
       return
