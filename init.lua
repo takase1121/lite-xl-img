@@ -12,7 +12,7 @@ local qoi = require "plugins.img.qoi"
 
 
 config.plugins.img = {
-  bin_path = USERDIR .. "/plugins/img/img",
+  bin_path = USERDIR .. "/plugins/img/img.com",
   max_pixels = 5000
 }
 
