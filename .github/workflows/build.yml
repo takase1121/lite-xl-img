@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Compile
-        run: clang -o img img.c
+        run: clang -o img.exe img.c
 
       - name: Package (Windows)
         uses: actions/upload-artifact@v3
