@@ -54,3 +54,17 @@ jobs:
           path:
             img.exe
   
+  build_bundle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Package
+        uses: actions/upload-artifact@v3
+        with:
+          name: Bundle
+          path:
+            init.lua
+            qoi.lua
+            LICENSE
