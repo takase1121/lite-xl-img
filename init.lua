@@ -10,9 +10,14 @@ local subprocess = require "process"
 
 local qoi = require "plugins.img.qoi"
 
+local EXE_NAMES = {
+  ["Windows"] = "img.exe",
+  ["Mac OS X"] = "img.cursed",
+  ["Linux"] = "img"
+}
 
 config.plugins.img = {
-  bin_path = USERDIR .. "/plugins/img/img.com",
+  bin_path = USERDIR .. "/plugins/img/" .. EXE_NAMES[PLATFORM],
   max_pixels = 5000
 }
 
