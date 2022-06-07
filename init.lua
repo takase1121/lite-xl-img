@@ -219,6 +219,7 @@ function ImgView:draw()
       core.redraw = true
     end
 
+    ox, oy = ox + style.padding.y, oy + style.padding.y
     local next_i = current_i + max_pixels
     for i = current_i, next_i do
       local decoder, r, g, b, a = qoi.decode_iterator(self.img)
