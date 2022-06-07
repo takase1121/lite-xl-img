@@ -224,7 +224,7 @@ function ImgView:draw()
       local decoder, r, g, b, a = qoi.decode_iterator(self.img)
       if not decoder then break end
 
-      local x, y = ox + (i - 1) % self.img.w, oy + (i - 1) // self.img.w
+      local x, y = ox + i % self.img.w, oy + i // self.img.w
       color[1], color[2], color[3], color[4] = r, g, b, a
       renderer.draw_rect(x, y, 1, 1, color, self)
     end
