@@ -64,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: Bundle
-          path:
+          path: |
             init.lua
             qoi.lua
             LICENSE
